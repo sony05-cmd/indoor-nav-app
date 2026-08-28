@@ -9,7 +9,3 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20.11.0
-    disk:
-      name: indoor-nav-data
-      mountPath: /opt/render/project/src/backend/data
-      sizeGB: 1
