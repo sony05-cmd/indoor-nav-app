@@ -1,12 +1,12 @@
 const express = require("express");
 const { v4: uuidv4 } = require("uuid");
-const db = require("../db");
+const { getDB } = require("../db");
 
 const router = express.Router();
 
 // POST /api/edges — connect two nodes with a walkable path (admin tool).
 // distanceMeters should be measured/paced out by the admin during mapping.
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const { fromNodeId, toNodeId, distanceMeters, instruction, hazard, oneWay } = req.body;
   if (!fromNodeId || !toNodeId || distanceMeters === undefined) {
     return res.status(400).json({ error: "fromNodeId, toNodeId, distanceMeters are required" });
@@ -22,29 +22,35 @@ router.post("/", (req, res) => {
     oneWay: !!oneWay,
   };
 
-  db.get("edges").push(edge).write();
+  await getDB().collection("edges").insertOne(edge);
+  delete edge._id;
   res.status(201).json(edge);
 });
 
 // GET /api/edges/floor/:floorId — all edges whose endpoints are on this
 // floor. Needed so the admin tool can reload a floor's full graph (nodes +
 // edges) after a page refresh, not just whatever was created this session.
-router.get("/floor/:floorId", (req, res) => {
-  const floorNodeIds = new Set(
-    db.get("nodes").filter({ floorId: req.params.floorId }).map("id").value()
-  );
-  const edges = db
-    .get("edges")
-    .filter((e) => floorNodeIds.has(e.fromNodeId) || floorNodeIds.has(e.toNodeId))
-    .value();
+router.get("/floor/:floorId", async (req, res) => {
+  const db = getDB();
+  const floorNodes = await db.collection("nodes").find({ floorId: req.params.floorId }).toArray();
+  const floorNodeIds = floorNodes.map((n) => n.id);
+
+  const edges = await db
+    .collection("edges")
+    .find(
+      { $or: [{ fromNodeId: { $in: floorNodeIds } }, { toNodeId: { $in: floorNodeIds } }] },
+      { projection: { _id: 0 } }
+    )
+    .toArray();
   res.json(edges);
 });
 
 // PATCH /api/edges/:id — update an existing edge's distance/instruction/
 // hazard/oneWay (admin tool, for fixing mistakes without delete+recreate)
-router.patch("/:id", (req, res) => {
+router.patch("/:id", async (req, res) => {
   const { distanceMeters, instruction, hazard, oneWay } = req.body;
-  const edge = db.get("edges").find({ id: req.params.id }).value();
+  const db = getDB();
+  const edge = await db.collection("edges").findOne({ id: req.params.id }, { projection: { _id: 0 } });
   if (!edge) return res.status(404).json({ error: "not found" });
 
   const updates = {};
@@ -53,13 +59,13 @@ router.patch("/:id", (req, res) => {
   if (hazard !== undefined) updates.hazard = hazard || null;
   if (oneWay !== undefined) updates.oneWay = !!oneWay;
 
-  db.get("edges").find({ id: req.params.id }).assign(updates).write();
+  await db.collection("edges").updateOne({ id: req.params.id }, { $set: updates });
   res.json({ ...edge, ...updates });
 });
 
 // DELETE /api/edges/:id — remove a connection (admin tool, for fixing mistakes)
-router.delete("/:id", (req, res) => {
-  db.get("edges").remove({ id: req.params.id }).write();
+router.delete("/:id", async (req, res) => {
+  await getDB().collection("edges").deleteOne({ id: req.params.id });
   res.status(204).send();
 });
 

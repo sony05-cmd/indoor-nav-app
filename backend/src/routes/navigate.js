@@ -1,5 +1,5 @@
 const express = require("express");
-const db = require("../db");
+const { getDB } = require("../db");
 const { findShortestPath } = require("../utils/pathfinding");
 
 const router = express.Router();
@@ -14,18 +14,23 @@ const router = express.Router();
 // Cross-floor routing works automatically once you add Edge rows
 // connecting a "stairs-bottom" node on floor 1 to a "stairs-top" node on
 // floor 2 — the stairs/lift IS the edge between floors.
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   const { buildingId, startNodeId, endNodeId } = req.query;
   if (!buildingId || !startNodeId || !endNodeId) {
     return res.status(400).json({ error: "buildingId, startNodeId, endNodeId are required" });
   }
 
-  const floorIds = db.get("floors").filter({ buildingId }).map("id").value();
-  if (floorIds.length === 0) return res.status(404).json({ error: "building has no floors" });
+  const db = getDB();
+  const floors = await db.collection("floors").find({ buildingId }).toArray();
+  if (floors.length === 0) return res.status(404).json({ error: "building has no floors" });
 
-  const nodes = db.get("nodes").filter((n) => floorIds.includes(n.floorId)).value();
+  const floorIds = floors.map((f) => f.id);
+  const nodes = await db.collection("nodes").find({ floorId: { $in: floorIds } }, { projection: { _id: 0 } }).toArray();
   const nodeIds = nodes.map((n) => n.id);
-  const edges = db.get("edges").filter((e) => nodeIds.includes(e.fromNodeId)).value();
+  const edges = await db
+    .collection("edges")
+    .find({ fromNodeId: { $in: nodeIds } }, { projection: { _id: 0 } })
+    .toArray();
 
   const result = findShortestPath(nodes, edges, startNodeId, endNodeId);
   if (!result) {
