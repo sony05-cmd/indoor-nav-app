@@ -59,4 +59,15 @@ router.get("/floor/:floorId", (req, res) => {
   res.json(nodes);
 });
 
+// DELETE /api/nodes/:id — remove a node (admin tool). Also cascades to
+// remove any edges that reference it, so the graph never has dangling
+// edges pointing at a node that no longer exists.
+router.delete("/:id", (req, res) => {
+  db.get("nodes").remove({ id: req.params.id }).write();
+  db.get("edges")
+    .remove((e) => e.fromNodeId === req.params.id || e.toNodeId === req.params.id)
+    .write();
+  res.status(204).send();
+});
+
 module.exports = router;

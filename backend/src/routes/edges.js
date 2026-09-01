@@ -26,6 +26,20 @@ router.post("/", (req, res) => {
   res.status(201).json(edge);
 });
 
+// GET /api/edges/floor/:floorId — all edges whose endpoints are on this
+// floor. Needed so the admin tool can reload a floor's full graph (nodes +
+// edges) after a page refresh, not just whatever was created this session.
+router.get("/floor/:floorId", (req, res) => {
+  const floorNodeIds = new Set(
+    db.get("nodes").filter({ floorId: req.params.floorId }).map("id").value()
+  );
+  const edges = db
+    .get("edges")
+    .filter((e) => floorNodeIds.has(e.fromNodeId) || floorNodeIds.has(e.toNodeId))
+    .value();
+  res.json(edges);
+});
+
 // DELETE /api/edges/:id — remove a connection (admin tool, for fixing mistakes)
 router.delete("/:id", (req, res) => {
   db.get("edges").remove({ id: req.params.id }).write();
