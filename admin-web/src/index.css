@@ -1,0 +1,128 @@
+:root {
+  /* Color: a night-blueprint palette — deep navy ground, drafting-table
+     grid, amber for the pen-in-hand action color, teal for walkable
+     paths (edges), warm red reserved only for hazards/danger. */
+  --bg: #0a1420;
+  --surface: #0f1e2f;
+  --surface-raised: #142a40;
+  --grid-line: #1c3452;
+  --grid-line-strong: #26466e;
+  --ink: #eaf2fb;
+  --ink-dim: #7d95b3;
+  --ink-faint: #4c617e;
+  --accent: #f2a93b;
+  --accent-dim: #a97a30;
+  --edge: #4fd1c5;
+  --danger: #e2635a;
+  --radius: 6px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+button {
+  font-family: "Space Grotesk", ui-sans-serif, sans-serif;
+}
+
+button {
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid var(--grid-line-strong);
+  background: var(--surface-raised);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+button:hover {
+  border-color: var(--accent-dim);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button.primary {
+  background: var(--accent);
+  color: #1a1204;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+button.primary:hover {
+  background: #ffb84f;
+}
+
+button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: transparent;
+}
+
+button.danger:hover {
+  background: rgba(226, 99, 90, 0.12);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+input,
+select {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--grid-line-strong);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  width: 100%;
+}
+
+input:focus,
+select:focus,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+
+::selection {
+  background: var(--accent);
+  color: #1a1204;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
