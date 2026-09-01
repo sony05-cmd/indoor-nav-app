@@ -40,6 +40,23 @@ router.get("/floor/:floorId", (req, res) => {
   res.json(edges);
 });
 
+// PATCH /api/edges/:id — update an existing edge's distance/instruction/
+// hazard/oneWay (admin tool, for fixing mistakes without delete+recreate)
+router.patch("/:id", (req, res) => {
+  const { distanceMeters, instruction, hazard, oneWay } = req.body;
+  const edge = db.get("edges").find({ id: req.params.id }).value();
+  if (!edge) return res.status(404).json({ error: "not found" });
+
+  const updates = {};
+  if (distanceMeters !== undefined) updates.distanceMeters = distanceMeters;
+  if (instruction !== undefined) updates.instruction = instruction || null;
+  if (hazard !== undefined) updates.hazard = hazard || null;
+  if (oneWay !== undefined) updates.oneWay = !!oneWay;
+
+  db.get("edges").find({ id: req.params.id }).assign(updates).write();
+  res.json({ ...edge, ...updates });
+});
+
 // DELETE /api/edges/:id — remove a connection (admin tool, for fixing mistakes)
 router.delete("/:id", (req, res) => {
   db.get("edges").remove({ id: req.params.id }).write();
