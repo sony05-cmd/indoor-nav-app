@@ -1,3 +1,19 @@
+const NODE_COLORS = {
+  entrance: "#f2a93b",
+  junction: "#eaf2fb",
+  room: "#4fd1c5",
+  stairs: "#c792ea",
+  lift: "#c792ea",
+};
+
+function speak(text) {
+  if (!text || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.95;
+  window.speechSynthesis.speak(utterance);
+}
+
 export default function Sidebar({
   buildings,
   selectedBuildingId,
@@ -18,6 +34,8 @@ export default function Sidebar({
   baseUrl,
   onEditBaseUrl,
 }) {
+  const nodeNameById = new Map(nodes.map((n) => [n.id, n.name]));
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -90,11 +108,15 @@ export default function Sidebar({
 
           <section className="sidebar-section scroll">
             <label>Nodes ({nodes.length})</label>
-            <ul className="list">
+            <ul className="card-list">
               {nodes.map((n) => (
-                <li key={n.id}>
-                  <span>{n.name}</span>
-                  <button className="danger small" onClick={() => onDeleteNode(n.id)}>
+                <li key={n.id} className="node-card">
+                  <span className="node-dot" style={{ background: NODE_COLORS[n.type] || "var(--ink)" }} />
+                  <div className="card-text">
+                    <div className="card-title">{n.name}</div>
+                    <div className="card-subtitle">{n.type}</div>
+                  </div>
+                  <button className="icon-btn danger" onClick={() => onDeleteNode(n.id)} title="Delete node">
                     ✕
                   </button>
                 </li>
@@ -105,16 +127,37 @@ export default function Sidebar({
 
           <section className="sidebar-section scroll">
             <label>Edges ({edges.length})</label>
-            <ul className="list">
+            <ul className="card-list">
               {edges.map((e) => (
-                <li key={e.id}>
-                  <span className="edge-item" onClick={() => onEditEdge(e)} title="Click to edit">
-                    {e.distanceMeters}m{e.hazard ? " ⚠" : ""}
-                    {e.instruction ? "" : " · no instruction"}
-                  </span>
-                  <button className="danger small" onClick={() => onDeleteEdge(e.id)}>
-                    ✕
-                  </button>
+                <li key={e.id} className="edge-card">
+                  <div className="card-text clickable" onClick={() => onEditEdge(e)} title="Click to edit">
+                    <div className="card-title">
+                      {nodeNameById.get(e.fromNodeId) || "?"} → {nodeNameById.get(e.toNodeId) || "?"}
+                    </div>
+                    <div className="card-subtitle">
+                      {e.distanceMeters}m
+                      {e.hazard ? " · ⚠ " + e.hazard : ""}
+                    </div>
+                    {e.instruction ? (
+                      <div className="card-instruction">"{e.instruction}"</div>
+                    ) : (
+                      <div className="card-instruction missing">No instruction set — click to add one</div>
+                    )}
+                  </div>
+                  <div className="card-actions">
+                    {e.instruction && (
+                      <button
+                        className="icon-btn"
+                        onClick={() => speak(e.instruction)}
+                        title={`Preview: "${e.instruction}"`}
+                      >
+                        🔊
+                      </button>
+                    )}
+                    <button className="icon-btn danger" onClick={() => onDeleteEdge(e.id)} title="Delete edge">
+                      ✕
+                    </button>
+                  </div>
                 </li>
               ))}
               {edges.length === 0 && <li className="empty">No edges yet</li>}

@@ -37,6 +37,7 @@
 
 .sidebar-section.scroll {
   min-height: 0;
+  flex-shrink: 0;
 }
 
 .sidebar-section.settings {
@@ -78,50 +79,114 @@
   line-height: 1.5;
 }
 
-.list {
+.card-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-height: 160px;
+  gap: 6px;
+  max-height: 220px;
   overflow-y: auto;
 }
 
-.list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  border-radius: var(--radius);
+.card-list .empty {
+  color: var(--ink-faint);
+  font-style: italic;
+  padding: 8px 2px;
   font-size: 13px;
 }
 
-.edge-item {
-  cursor: pointer;
-  flex: 1;
-}
-
-.edge-item:hover {
-  color: var(--accent);
-}
-
-.list li:hover {
+.node-card,
+.edge-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: var(--radius);
   background: var(--surface-raised);
+  border: 1px solid transparent;
 }
 
-.list li.empty {
-  color: var(--ink-faint);
+.node-card:hover,
+.edge-card:hover {
+  border-color: var(--grid-line-strong);
+}
+
+.node-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.card-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-text.clickable {
+  cursor: pointer;
+}
+
+.card-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-subtitle {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.card-instruction {
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-top: 5px;
+  line-height: 1.4;
   font-style: italic;
-  padding: 6px 8px;
 }
 
-button.danger.small {
+.card-instruction.missing {
+  color: var(--accent-dim);
+  font-style: normal;
+}
+
+.card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.icon-btn {
   border: none;
   background: transparent;
-  padding: 2px 6px;
-  font-size: 12px;
+  padding: 4px 6px;
+  font-size: 13px;
+  border-radius: 4px;
+  color: var(--ink-dim);
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.icon-btn.danger {
+  color: var(--danger);
+}
+
+.icon-btn.danger:hover {
+  background: rgba(226, 99, 90, 0.12);
 }
 
 button.full-width {
