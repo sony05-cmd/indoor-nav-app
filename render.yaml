@@ -15,7 +15,6 @@ services:
   - type: web
     name: indoor-nav-admin
     runtime: static
-    plan: free
     rootDir: admin-web
     buildCommand: npm install && npm run build
     staticPublishPath: dist
