@@ -9,3 +9,17 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20.11.0
+      - key: MONGODB_URI
+        sync: false
+
+  - type: web
+    name: indoor-nav-admin
+    runtime: static
+    plan: free
+    rootDir: admin-web
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
