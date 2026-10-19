@@ -4,6 +4,7 @@ import Sidebar from "./components/Sidebar";
 import Canvas from "./components/Canvas";
 import NodeForm from "./components/NodeForm";
 import EdgeForm from "./components/EdgeForm";
+import Modal from "./components/Modal";
 import { openQrPrintSheet } from "./components/qrPrintSheet";
 import "./App.css";
 
@@ -24,8 +25,13 @@ export default function App() {
   const [pendingEdgePair, setPendingEdgePair] = useState(null); // { from, to } awaiting the EdgeForm (create)
   const [editingEdge, setEditingEdge] = useState(null); // { edge, from, to } awaiting the EdgeForm (edit)
 
+  // Cross-floor linking
+  const [linkingFrom, setLinkingFrom] = useState(null); // node we are linking FROM
+  const [otherFloorId, setOtherFloorId] = useState("");
+  const [otherNodeId, setOtherNodeId] = useState("");
+
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState(null);
 
   // --- Loading data -----------------------------------------------------
   const loadBuildings = useCallback(async () => {
@@ -42,12 +48,14 @@ export default function App() {
   }, [loadBuildings]);
 
   const loadBuildingDetail = useCallback(async (buildingId) => {
-    if (!buildingId) return;
+    if (!buildingId) return [];
     try {
       const building = await api.getBuilding(buildingId);
       setFloors(building.floors || []);
+      return building.floors || [];
     } catch (err) {
       setError(err.message);
+      return [];
     }
   }, []);
 
@@ -64,10 +72,15 @@ export default function App() {
     try {
       const building = await api.getBuilding(selectedBuildingId);
       const floor = (building.floors || []).find((f) => f.id === selectedFloorId);
-      setNodes(floor?.nodes || []);
+      const floorNodes = floor?.nodes || [];
+      setNodes(floorNodes);
 
+      // Only draw edges whose two ends are both on THIS floor. Cross-floor
+      // links (stairs/lift) exist in the database but can't be drawn on a
+      // single-floor canvas.
+      const ids = new Set(floorNodes.map((n) => n.id));
       const floorEdges = await api.getEdgesByFloor(selectedFloorId);
-      setEdges(floorEdges);
+      setEdges(floorEdges.filter((e) => ids.has(e.fromNodeId) && ids.has(e.toNodeId)));
     } catch (err) {
       setError(err.message);
     }
@@ -146,7 +159,15 @@ export default function App() {
         toNodeId: pendingEdgePair.to.id,
         ...fields,
       });
-      setEdges((prev) => [...prev, edge]);
+      const onThisFloor =
+        nodes.some((n) => n.id === edge.fromNodeId) && nodes.some((n) => n.id === edge.toNodeId);
+      if (onThisFloor) {
+        setEdges((prev) => [...prev, edge]);
+      } else {
+        setNotice(
+          `Linked "${pendingEdgePair.from.name}" to "${pendingEdgePair.to.name}" on another floor.`
+        );
+      }
       setPendingEdgePair(null);
     } catch (err) {
       setError(err.message);
@@ -198,6 +219,27 @@ export default function App() {
     setBaseUrl(url);
   };
 
+  // --- Cross-floor linking ---------------------------------------------------
+  const startCrossFloorLink = async () => {
+    const from = pendingFrom;
+    setPendingFrom(null);
+    // refresh so nodes created on other floors are included
+    await loadBuildingDetail(selectedBuildingId);
+    setOtherFloorId("");
+    setOtherNodeId("");
+    setLinkingFrom(from);
+  };
+
+  const otherFloors = floors.filter((f) => f.id !== selectedFloorId);
+  const otherFloorNodes = floors.find((f) => f.id === otherFloorId)?.nodes || [];
+
+  const continueCrossFloorLink = () => {
+    const target = otherFloorNodes.find((n) => n.id === otherNodeId);
+    if (!target || !linkingFrom) return;
+    setPendingEdgePair({ from: linkingFrom, to: target });
+    setLinkingFrom(null);
+  };
+
   return (
     <div className="app">
       <Sidebar
@@ -230,6 +272,20 @@ export default function App() {
             {error} (click to dismiss)
           </div>
         )}
+        {notice && (
+          <div className="error-banner" style={{ background: "#14532d" }} onClick={() => setNotice(null)}>
+            {notice} (click to dismiss)
+          </div>
+        )}
+
+        {mode === "connect" && pendingFrom && (
+          <div style={{ padding: "10px 16px" }}>
+            <button className="primary" onClick={startCrossFloorLink}>
+              Link "{pendingFrom.name}" to a node on another floor
+            </button>
+          </div>
+        )}
+
         {!selectedFloorId ? (
           <div className="empty-state">
             <h2>Select or create a building and floor to start mapping</h2>
@@ -250,6 +306,49 @@ export default function App() {
       </main>
 
       {pendingNodePos && <NodeForm onSubmit={handleNodeFormSubmit} onClose={() => setPendingNodePos(null)} />}
+
+      {linkingFrom && (
+        <Modal title={`Link "${linkingFrom.name}" to another floor`} onClose={() => setLinkingFrom(null)}>
+          <div className="field">
+            <label htmlFor="other-floor">Floor</label>
+            <select
+              id="other-floor"
+              value={otherFloorId}
+              onChange={(e) => {
+                setOtherFloorId(e.target.value);
+                setOtherNodeId("");
+              }}
+            >
+              <option value="">Choose a floor…</option>
+              {otherFloors.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="other-node">Node on that floor (e.g. the stairs)</label>
+            <select id="other-node" value={otherNodeId} onChange={(e) => setOtherNodeId(e.target.value)}>
+              <option value="">Choose a node…</option>
+              {otherFloorNodes.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="modal-actions">
+            <button type="button" onClick={() => setLinkingFrom(null)}>
+              Cancel
+            </button>
+            <button type="button" className="primary" disabled={!otherNodeId} onClick={continueCrossFloorLink}>
+              Next
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {pendingEdgePair && (
         <EdgeForm
           fromNode={pendingEdgePair.from}
